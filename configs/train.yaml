@@ -1,0 +1,106 @@
+trainer:
+  target: trainer.TrainerDifIR
+
+wandb:
+  use_wandb: true
+  name: best
+  description: change loss to l1 and delete autoencoder
+
+resume: ""
+
+model:
+  target: models.unet.UNetModelSwin
+  ckpt_path: ~
+  params:
+    img_width: 1024
+    img_height: 16
+    up_factor: 4
+    in_channels: 1
+    model_channels: 192
+    out_channels: 1
+    attention_resolutions: [16,8,4]
+    dropout: 0
+    channel_mult: [1, 2, 4]
+    num_res_blocks: [3, 3, 3]
+    conv_resample: True
+    dims: 2
+    use_fp16: False
+    num_head_channels: 32
+    use_scale_shift_norm: True
+    resblock_updown: False
+    swin_depth: 2
+    swin_embed_dim: 192
+    window_size: [2,8]
+    mlp_ratio: 4
+    cond_sr: True
+
+diffusion:
+  target: models.script_util.create_gaussian_diffusion
+  params:
+    sf: 4
+    schedule_name: exponential
+    schedule_kwargs:
+      power: 2
+    etas_end: 0.99
+    steps: 4
+    min_noise_level: 0.01
+    kappa: 4.0
+    weighted_mse: False
+    predict_type: xstart
+    timestep_respacing: ~
+    scale_factor: 1.0
+    normalize_input: True
+    latent_flag: True
+
+data:
+  train:
+    dataroot_lq: /amax/lm/Datahouse/KITTI/train_16_64/lr_16
+    dataroot_gt: /amax/lm/Datahouse/KITTI/train_16_64/hr_64
+    dataroot_sr: /amax/lm/Datahouse/KITTI/train_16_64/sr_16_64
+    meta_info: /amax/lm/Datahouse/KITTI/train_16_64/meta_data.txt
+    height_low: 16
+    height_high: 64
+    weight: 1024
+  val:
+    dataroot_lq: /amax/lm/Datahouse/KITTI/val_16_64/lr_16
+    dataroot_gt: /amax/lm/Datahouse/KITTI/val_16_64/hr_64
+    dataroot_sr: /amax/lm/Datahouse/KITTI/val_16_64/sr_16_64
+    meta_info: /amax/lm/Datahouse/KITTI/val_16_64/meta_data.txt
+    height_low: 16
+    height_high: 64
+    weight: 1024
+
+train:
+  # learning rate
+  lr: 5e-5                      # learning rate 
+  lr_min: 2e-5                      # learning rate 
+  lr_schedule: ~
+  warmup_iterations: 5000
+  # dataloader
+  batch: [8, 4]                
+  microbatch: 4
+  num_workers: 4
+  prefetch_factor: 2            
+  # optimization settings
+  weight_decay: 0               
+  ema_rate: 0.999
+  iterations: 300000            # total iterations
+  # save logging
+  save_freq: 5000              
+  log_freq: [200, 2000, 1]         # [training loss, training images, val images]
+  local_logging: True           # manually save images
+  tf_logging: False             # tensorboard logging
+  # validation settings
+  use_ema_val: True            
+  val_freq: ${train.save_freq}
+  val_y_channel: True
+  val_resolution: 64
+  val_padding_mode: reflect
+  # training setting
+  use_amp: True                # amp training
+  seed: 123456                 # random seed
+  global_seeding: False
+  # model compile
+  compile:
+    flag: False
+    mode: reduce-overhead      # default, reduce-overhead
